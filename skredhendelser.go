@@ -16,6 +16,36 @@ const skredHendelserURL = "https://gis3.nve.no/map/rest/services/Mapservices/Skr
 const skredSearchRadiusKm = 1.0
 const skredMaxResults = 50
 
+// skredTypeNames maps NVE's numeric skredType codes to Norwegian names.
+// Source: https://register.geonorge.no/sosi-kodelister/skred/skredtypedetaljert
+var skredTypeNames = map[int]string{
+	110: "Skred fra fast fjell",
+	111: "Steinsprang",
+	112: "Steinskred",
+	113: "Fjellskred",
+	120: "Undervannsskred",
+	130: "Snøskred",
+	131: "Vått snøskred",
+	132: "Tørt snøskred",
+	133: "Sørpeskred",
+	134: "Løssnøskred",
+	135: "Vått løssnøskred",
+	136: "Tørt løssnøskred",
+	137: "Flakskred",
+	138: "Vått flakskred",
+	139: "Tørt flakskred",
+	140: "Løsmasseskred",
+	141: "Kvikkleireskred",
+	142: "Flomskred",
+	143: "Leirskred",
+	144: "Jordskred",
+	150: "Isnedfall",
+	151: "Skavlfall",
+	160: "Utglidning",
+	171: "Sørpeskred",
+	190: "Skred (type ikke angitt)",
+}
+
 // skredHendelserResponse is the ArcGIS JSON response for the SkredHendelser layer.
 type skredHendelserResponse struct {
 	Features []skredHendelserFeature `json:"features"`
@@ -115,8 +145,7 @@ func fetchSkredHendelser(ctx context.Context, cache *Cache, lat, lon float64) ([
 		return nil, fmt.Errorf("skredhendelser decode: %w", err)
 	}
 
-	seen := make(map[int64]bool)
-	seenCoord := make(map[string]bool)
+	seen := make(map[string]bool)
 	var events []HistoricalEvent
 
 	for _, f := range result.Features {
@@ -124,20 +153,16 @@ func fetchSkredHendelser(ctx context.Context, cache *Cache, lat, lon float64) ([
 			continue
 		}
 
-		// Deduplicate: use skredID when present, otherwise fall back to
-		// a coordinate-based key (5 decimal places ~ 1 m precision).
-		if id, ok := attrInt(f.Attributes, "skredID"); ok {
-			if seen[id] {
-				continue
-			}
-			seen[id] = true
-		} else {
-			coordKey := fmt.Sprintf("%.5f,%.5f", f.Geometry.X, f.Geometry.Y)
-			if seenCoord[coordKey] {
-				continue
-			}
-			seenCoord[coordKey] = true
+		// Deduplicate: use skredID (GUID) when present, otherwise fall back
+		// to a coordinate-based key (5 decimal places ~ 1 m precision).
+		dedupKey := fmt.Sprintf("%.5f,%.5f", f.Geometry.X, f.Geometry.Y)
+		if id := attrString(f.Attributes, "skredID"); id != "" {
+			dedupKey = id
 		}
+		if seen[dedupKey] {
+			continue
+		}
+		seen[dedupKey] = true
 
 		evtLat := f.Geometry.Y
 		evtLon := f.Geometry.X
@@ -148,12 +173,12 @@ func fetchSkredHendelser(ctx context.Context, cache *Cache, lat, lon float64) ([
 		}
 
 		e := HistoricalEvent{
-			Type:           attrString(f.Attributes, "skredtype", "typeNavn", "skredtypeNavn"),
+			Type:           resolveSkredType(f.Attributes),
 			Date:           parseSkredDate(f.Attributes),
-			Location:       attrString(f.Attributes, "sted", "stedsnavn"),
+			Location:       attrString(f.Attributes, "stedsnavn", "sted"),
 			BuildingDamage: attrString(f.Attributes, "bygnSkadet") == "Ja",
 			RoadDamage:     attrString(f.Attributes, "vegSkadet") == "Ja",
-			Fatalities:     attrIntVal(f.Attributes, "dodsfall", "antallOmkommet"),
+			Fatalities:     attrIntVal(f.Attributes, "totAntPersOmkommet"),
 			Description:    attrString(f.Attributes, "beskrivelse", "hendelseBeskrivelse"),
 			Latitude:       evtLat,
 			Longitude:      evtLon,
@@ -259,6 +284,22 @@ func haversineMeters(lat1, lon1, lat2, lon2 float64) float64 {
 	return earthRadiusM * c
 }
 
+// resolveSkredType maps the numeric skredType code to a Norwegian name.
+func resolveSkredType(attrs map[string]any) string {
+	if v, ok := attrs["skredType"]; ok && v != nil {
+		if code, ok := v.(float64); ok {
+			if name, ok := skredTypeNames[int(code)]; ok {
+				return name
+			}
+		}
+	}
+	// Fallback: use skredNavn if available
+	if name := attrString(attrs, "skredNavn"); name != "" {
+		return name
+	}
+	return ""
+}
+
 // parseSkredDate extracts and formats the event date from attributes.
 // NVE uses epoch milliseconds or date strings.
 func parseSkredDate(attrs map[string]any) string {
@@ -299,19 +340,6 @@ func attrString(attrs map[string]any, keys ...string) string {
 		}
 	}
 	return ""
-}
-
-// attrInt returns the first integer value found for a key.
-func attrInt(attrs map[string]any, keys ...string) (int64, bool) {
-	for _, k := range keys {
-		if v, ok := attrs[k]; ok && v != nil {
-			switch val := v.(type) {
-			case float64:
-				return int64(val), true
-			}
-		}
-	}
-	return 0, false
 }
 
 // attrIntVal returns the first non-zero int value found for the given keys.
