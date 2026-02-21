@@ -2,6 +2,7 @@
 const HazardMap = {
   map: null,
   marker: null,
+  eventMarkers: null,
   wmsLayers: {},
   layerControlEl: null,
 
@@ -66,6 +67,8 @@ const HazardMap = {
       maxZoom: 18,
     }).addTo(this.map);
 
+    this.eventMarkers = L.layerGroup().addTo(this.map);
+
     // Create WMS layers (not added to map until toggled)
     this.wmsDefinitions.forEach(def => {
       this.wmsLayers[def.id] = L.tileLayer.wms(def.url, {
@@ -99,7 +102,7 @@ const HazardMap = {
     });
   },
 
-  setLocation(lat, lon) {
+  setLocation(lat, lon, historicalEvents) {
     // Recalculate size after container becomes visible
     this.map.invalidateSize();
     if (this.marker) {
@@ -107,5 +110,39 @@ const HazardMap = {
     }
     this.marker = L.marker([lat, lon]).addTo(this.map);
     this.map.setView([lat, lon], 14);
+
+    // Clear old event markers and add new ones
+    this.eventMarkers.clearLayers();
+    if (historicalEvents && historicalEvents.length > 0) {
+      historicalEvents.forEach(e => {
+        const color = e.building_damage ? '#c0392b' : '#d96830';
+        const marker = L.circleMarker([e.latitude, e.longitude], {
+          radius: 7,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 0.85,
+        });
+
+        const parts = [`<b>${this.esc(e.type)}</b>`];
+        if (e.date) parts.push(this.esc(e.date));
+        if (e.location) parts.push(this.esc(e.location));
+        parts.push(`${e.distance_m} m fra adressen`);
+        if (e.building_damage) parts.push('Bygningsskade');
+        if (e.road_damage) parts.push('Vegskade');
+        if (e.fatalities > 0) parts.push(`${e.fatalities} omkommet`);
+        if (e.description) parts.push(`<i>${this.esc(e.description.substring(0, 200))}</i>`);
+
+        marker.bindPopup(parts.join('<br>'));
+        this.eventMarkers.addLayer(marker);
+      });
+    }
+  },
+
+  esc(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   },
 };

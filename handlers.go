@@ -71,17 +71,18 @@ func handleRisk(cache *Cache) http.HandlerFunc {
 			Kommunenavn:   kommune,
 		}
 
-		hazards, elevation, alerts := assessHazards(r.Context(), cache, addr)
+		hazards, elevation, alerts, historicalEvents := assessHazards(r.Context(), cache, addr)
 		overallScore, overallLevel, summary := calculateRisk(hazards, elevation, knr)
 
 		resp := RiskResponse{
-			Address:       addr,
-			OverallScore:  overallScore,
-			OverallLevel:  overallLevel,
-			Summary:       summary,
-			Elevation:     elevation,
-			Hazards:       hazards,
-			WeatherAlerts: alerts,
+			Address:          addr,
+			OverallScore:     overallScore,
+			OverallLevel:     overallLevel,
+			Summary:          summary,
+			Elevation:        elevation,
+			Hazards:          hazards,
+			WeatherAlerts:    alerts,
+			HistoricalEvents: historicalEvents,
 		}
 
 		writeJSON(w, http.StatusOK, resp)

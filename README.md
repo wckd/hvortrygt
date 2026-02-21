@@ -15,6 +15,7 @@ Sjekk naturfare for enhver norsk adresse. Skriv inn en adresse og få en risikov
 | Snøskred | NVE | Aktsomhetsområder for snøskred |
 | Steinsprang | NVE | Aktsomhetsområder for steinsprang |
 | Skredfaresoner | NVE | Kartlagte faresoner (100- og 1000-år) |
+| Historiske skredhendelser | NVE | Registrerte skred innenfor 1 km (NSDB) |
 | Stormflo | Kartverket | Konsekvensdata for kystkommuner |
 | Værvarsler | MET | Aktive farevarsler (MetAlerts) |
 | Høyde | Kartverket | Høyde over havet for risikojustering |
@@ -69,7 +70,7 @@ Alt av statiske filer (HTML, CSS, JS) er innebygd i binæren via `embed.FS`.
 Bruker → Adressesøk (Kartverket) → Velg adresse
                                         ↓
                               Backend fan-out (parallelt):
-                              ├── NVE: 8 ArcGIS-spørringer
+                              ├── NVE: 8 ArcGIS-spørringer + SkredHendelser
                               ├── Kartverket: Høyde + Stormflo
                               └── MET: Værvarsler
                                         ↓
@@ -86,7 +87,7 @@ Bruker → Adressesøk (Kartverket) → Velg adresse
 
 Alle API-er er åpne og gratis. MET krever `User-Agent`-header (satt automatisk).
 
-- [NVE Kartdata](https://www.nve.no/kart/) — Flom, skred, kvikkleire
+- [NVE Kartdata](https://www.nve.no/kart/) — Flom, skred, kvikkleire, historiske skredhendelser
 - [Kartverket Adresser](https://ws.geonorge.no/adresser/v1/) — Geokoding
 - [Kartverket Høydedata](https://ws.geonorge.no/hoydedata/v1/) — Terrengdata
 - [Kartverket Stormflo](https://stormflo-konsekvens.kartverket.no/) — Konsekvensdata

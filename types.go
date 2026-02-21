@@ -22,6 +22,20 @@ type HazardResult struct {
 	Error       string `json:"error,omitempty"`
 }
 
+// HistoricalEvent represents a past landslide event from NVE's NSDB.
+type HistoricalEvent struct {
+	Type           string  `json:"type"`
+	Date           string  `json:"date,omitempty"`
+	Location       string  `json:"location"`
+	BuildingDamage bool    `json:"building_damage"`
+	RoadDamage     bool    `json:"road_damage"`
+	Fatalities     int     `json:"fatalities"`
+	Description    string  `json:"description,omitempty"`
+	Latitude       float64 `json:"latitude"`
+	Longitude      float64 `json:"longitude"`
+	DistanceMeters int     `json:"distance_m"`
+}
+
 // WeatherAlert represents an active MET weather warning.
 type WeatherAlert struct {
 	Event       string `json:"event"`
@@ -38,8 +52,9 @@ type RiskResponse struct {
 	OverallLevel  string         `json:"overall_level"`
 	Summary       string         `json:"summary"`
 	Elevation     *float64       `json:"elevation,omitempty"`
-	Hazards       []HazardResult `json:"hazards"`
-	WeatherAlerts []WeatherAlert `json:"weather_alerts"`
+	Hazards          []HazardResult  `json:"hazards"`
+	WeatherAlerts    []WeatherAlert  `json:"weather_alerts"`
+	HistoricalEvents []HistoricalEvent `json:"historical_events,omitempty"`
 }
 
 // scoreLevel returns the risk level string for a given score.

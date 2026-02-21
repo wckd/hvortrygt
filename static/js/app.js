@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await Api.risk(address);
       loading.hidden = true;
       Dashboard.render(data);
-      HazardMap.setLocation(address.latitude, address.longitude);
+      HazardMap.setLocation(address.latitude, address.longitude, data.historical_events || []);
     } catch (err) {
       loading.hidden = true;
       console.error('Risk assessment error:', err);

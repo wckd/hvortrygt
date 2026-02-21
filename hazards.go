@@ -26,7 +26,7 @@ var (
 
 // assessHazards runs all hazard checks in parallel and returns results.
 // Elevation is fetched first (needed by storm surge), then the rest fan out.
-func assessHazards(ctx context.Context, cache *Cache, addr Address) ([]HazardResult, *float64, []WeatherAlert) {
+func assessHazards(ctx context.Context, cache *Cache, addr Address) ([]HazardResult, *float64, []WeatherAlert, []HistoricalEvent) {
 	lat, lon := addr.Latitude, addr.Longitude
 
 	// Fetch elevation first — storm surge depends on it.
@@ -36,10 +36,11 @@ func assessHazards(ctx context.Context, cache *Cache, addr Address) ([]HazardRes
 	}
 
 	var (
-		mu      sync.Mutex
-		hazards []HazardResult
-		alerts  []WeatherAlert
-		wg      sync.WaitGroup
+		mu               sync.Mutex
+		hazards          []HazardResult
+		alerts           []WeatherAlert
+		historicalEvents []HistoricalEvent
+		wg               sync.WaitGroup
 	)
 
 	addHazard := func(h HazardResult) {
@@ -104,6 +105,17 @@ func assessHazards(ctx context.Context, cache *Cache, addr Address) ([]HazardRes
 		addHazard(checkStormSurge(ctx, cache, addr.Kommunenummer, elev))
 	}()
 
+	// Historical landslide events
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		h, events := getSkredHendelser(ctx, cache, lat, lon)
+		mu.Lock()
+		hazards = append(hazards, h)
+		historicalEvents = events
+		mu.Unlock()
+	}()
+
 	// Weather alerts
 	wg.Add(1)
 	go func() {
@@ -119,7 +131,7 @@ func assessHazards(ctx context.Context, cache *Cache, addr Address) ([]HazardRes
 	}()
 
 	wg.Wait()
-	return hazards, elev, alerts
+	return hazards, elev, alerts, historicalEvents
 }
 
 // checkFloodZones queries all flood return period layers and returns
