@@ -1,3 +1,4 @@
 hvortrygt
 *.exe
 .env
+.DS_Store

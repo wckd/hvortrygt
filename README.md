@@ -2,6 +2,8 @@
 
 Sjekk naturfare for enhver norsk adresse. Skriv inn en adresse og få en risikovurdering basert på åpne data fra NVE, Kartverket og MET.
 
+![Skjermbilde av hvortrygt — risikovurdering for Karl Johans gate 1, Oslo](screenshots/hvortrygt-screenshot.jpeg)
+
 ## Hva sjekkes
 
 |Fare | Kilde | Beskrivelse |
